@@ -1,0 +1,28 @@
+POST http://localhost:3000/api/v1/employees
+Content-Type: application/json
+
+{
+  "empId": "SE1001",
+  "firstName": "Alice",
+  "lastName": "Smith",
+  "email": "alice.smith@company.com",
+  "role": "EMPLOYEE",
+  "addresses": [
+    {
+      "type": "CURRENT",
+      "street": "123 Tech Park",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "postalCode": "500081",
+      "country": "India"
+    },
+    {
+      "type": "OFFICE",
+      "street": "456 Apex Tower",
+      "city": "Dallas",
+      "state": "Texas",
+      "postalCode": "75001",
+      "country": "USA"
+    }
+  ]
+}
