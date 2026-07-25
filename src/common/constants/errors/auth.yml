@@ -1,0 +1,8 @@
+# backend\src\common\constants\errors\auth.yml
+Auth:
+  INVALID_CREDENTIALS:
+    code: 'AUTH_001'
+    message: 'Invalid email or password.'
+  TOKEN_EXPIRED:
+    code: 'AUTH_002'
+    message: 'Authentication token has expired.'

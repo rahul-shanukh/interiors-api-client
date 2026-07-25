@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false
+  },
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "src/scripts/**/*.ts",
+    "src/modules/auth/**/*.ts",
+    "src/modules/user/**/*.ts"
+  ]
+}

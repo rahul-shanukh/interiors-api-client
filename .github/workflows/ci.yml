@@ -1,0 +1,36 @@
+# name: NestJS CI Pipeline
+
+# on:
+#   push:
+#     branches: ["main"]
+#   pull_request:
+#     branches: ["main"]
+
+# jobs:
+#   build-and-test:
+#     name: Build & Test
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20" # Match this to your local Node version
+#           cache: "npm" # Automatically caches dependencies to make builds super fast
+
+#       - name: Install Dependencies
+#         run: npm ci
+
+#       - name: Check Formatting & Linting
+#         run: |
+#           npm run lint
+#           npm run format
+
+#       - name: Build Application
+#         run: npm run build
+
+#       - name: Run Unit Tests
+#         run: npm run test

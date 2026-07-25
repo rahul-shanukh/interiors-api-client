@@ -1,0 +1,22 @@
+Media:
+  INVALID_FILE_TYPE:
+    code: MEDIA_001
+    message: File type not allowed
+  INVALID_FILE_NAME:
+    code: MEDIA_002
+    message: Filename contains invalid characters
+  PRESIGNED_URL_FAILED:
+    code: MEDIA_003
+    message: Failed to generate upload URL
+  STORAGE_UNAVAILABLE:
+    code: MEDIA_004
+    message: Storage service is currently unavailable
+  STORAGE_PROVIDER_NOT_SUPPORTED:
+    code: MEDIA_005
+    message: Storage provider not supported
+  ASSET_NOT_FOUND:
+    code: MEDIA_005
+    message: Media asset not found
+  ASSET_ALREADY_CONFIRMED:
+    code: MEDIA_006
+    message: Media asset already confirmed

@@ -1,0 +1,16 @@
+Common:
+  UNKNOWN_ERROR:
+    code: 'COMMON_001'
+    message: 'An unexpected error occurred.'
+  VALIDATION_ERROR:
+    code: 'COMMON_002'
+    message: 'Input validation failed.'
+  RATE_LIMIT_EXCEEDED:
+    code: 'COMMON_003'
+    message: 'Rate limit exceeded. Please try again later.'
+  UPLOAD_RATE_LIMIT_EXCEEDED:
+    code: 'COMMON_004'
+    message: 'Upload rate limit exceeded. Please try again later.'
+  LOGIN_RATE_LIMIT_EXCEEDED:
+    code: 'COMMON_005'
+    message: 'Login rate limit exceeded. Please try again later.'

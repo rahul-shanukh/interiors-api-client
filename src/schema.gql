@@ -1,0 +1,33 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Category {
+  id: ID!
+  name: String!
+  slug: String!
+}
+
+type Mutation {
+  addProductImage(altText: String, imageUrl: String!, productId: ID!): Product!
+}
+
+type Product {
+  category: Category!
+  description: String
+  id: ID!
+  images: [ProductImage!]!
+  name: String!
+  price: Float!
+  sku: String!
+  slug: String!
+}
+
+type ProductImage {
+  alt: String
+  url: String!
+}
+
+type Query {
+  getCatalog(limit: Int! = 20, offset: Int! = 0): [Product!]!
+}
