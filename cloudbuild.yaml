@@ -1,6 +1,7 @@
 substitutions:
   _ENV: "DEV"
-  _SERVICE_NAME: "interiors-api-${_ENV}"
+  _ENV_LOWER: "dev"
+  _SERVICE_NAME: "interiors-api-${_ENV_LOWER}"
   _REGION: "asia-south1"
   _REPO: "interiors-backend-client"
 
