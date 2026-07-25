@@ -7,3 +7,9 @@ resource "google_project_iam_member" "cloud_build_viewer" {
   role    = "roles/cloudbuild.builds.viewer"
   member  = "serviceAccount:${local.cloud_build_service_account}"
 }
+
+resource "google_project_iam_member" "cloud_build_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:cloud-build-deployer@${var.project_id}.iam.gserviceaccount.com"
+}

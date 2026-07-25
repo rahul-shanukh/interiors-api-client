@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY . .
 RUN pnpm install --offline
 RUN pnpm build
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 ENV NODE_ENV=production
