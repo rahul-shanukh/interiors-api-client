@@ -46,7 +46,7 @@ steps:
         "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE_NAME}:$SHORT_SHA",
       ]
 
-  - name: "gcr.io/google.com/cloudsdk/cloud-sdk"
+  - name: "gcr.io/cloud-builders/gcloud"
     entrypoint: gcloud
     args:
       - run
