@@ -57,7 +57,7 @@ steps:
       - "--platform=managed"
       - "--allow-unauthenticated"
       - "--set-secrets=MONGO_URI=MONGO_URI_${_ENV}:latest,SESSION_SECRET=SESSION_SECRET_${_ENV}:latest,UPSTASH_REDIS_REST_URL=UPSTASH_REDIS_REST_URL:latest,UPSTASH_REDIS_REST_TOKEN=UPSTASH_REDIS_REST_TOKEN:latest,RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest"
-      - "--set-env-vars=R2_ACCOUNT_ID=dummy-account-id,R2_ACCESS_KEY_ID=dummy-access-key,R2_SECRET_ACCESS_KEY=dummy-secret,R2_BUCKET_NAME=dummy-bucket,R2_PUBLIC_URL=http://localhost,R2_PUBLIC_DOMAIN=DUMMY,GCS_PROJECT_ID=DUMM,GCS_CLIENT_EMAIL=gfdh,GCS_BUCKET_NAME=dummy-bucket,CACHE_PROVIDER=upstash"
+      - - "--set-env-vars=R2_ACCOUNT_ID=dummy-account-id,R2_ACCESS_KEY_ID=dummy-access-key,R2_SECRET_ACCESS_KEY=dummy-secret,R2_BUCKET_NAME=dummy-bucket,R2_PUBLIC_URL=http://localhost,R2_PUBLIC_DOMAIN=DUMMY,GCS_PROJECT_ID=DUMM,GCS_CLIENT_EMAIL=gfdh,GCS_PRIVATE_KEY=dummy-private-key,GCS_BUCKET_NAME=dummy-bucket,CACHE_PROVIDER=upstash"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE_NAME}:$SHORT_SHA"
