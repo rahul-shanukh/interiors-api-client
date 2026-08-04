@@ -6,7 +6,7 @@ import {
   MongooseHealthIndicator,
 } from "@nestjs/terminus";
 import { ReadinessService } from "./readiness.service";
-import { Public } from "src/common/decorators/roles.decorator";
+import { Public } from "../common/decorators/roles.decorator";
 
 @Public()
 @Controller("health")

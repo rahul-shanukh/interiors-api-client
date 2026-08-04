@@ -1,7 +1,7 @@
 variable "project_id" {
-    description = "Google Cloud Project ID"
-    type = string
-    default = "project-489515"
+  description = "Google Cloud Project ID"
+  type        = string
+  default     = "project-489515"
 }
 
 variable "region" {
@@ -20,4 +20,10 @@ variable "service_name" {
   description = "Cloud Run service name"
   type        = string
   default     = "interiors-api-client"
+}
+
+variable "enable_cloud_run_iam" {
+  description = "Whether to grant the Cloud Tasks OIDC service account permission to invoke Cloud Run. Set to false for local/ngrok development."
+  type        = bool
+  default     = false
 }

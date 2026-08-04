@@ -1,3 +1,5 @@
+//Backend\interiors-api-client\src\app.module.ts
+
 import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ConfigModule, ConfigService } from "@nestjs/config";

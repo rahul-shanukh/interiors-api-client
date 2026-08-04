@@ -8,6 +8,12 @@ import {
 } from "./infrastructure/persistence/mongo/quote.schema";
 import { makeCounterProvider } from "@willsoto/nestjs-prometheus";
 import { NotificationModule } from "src/infrastructure/notifications/notification.module";
+import { FullHomePricingStrategy } from "./domain/pricing/strategies/full-home-pricing.strategy";
+import { PricingStrategy } from "./domain/pricing/pricing-strategy.interface";
+import {
+  PRICING_STRATEGIES,
+  PricingStrategyResolver,
+} from "./application/pricing/pricing-strategy-resolver.service";
 
 @Module({
   imports: [
@@ -17,6 +23,15 @@ import { NotificationModule } from "src/infrastructure/notifications/notificatio
   controllers: [QuoteController],
   providers: [
     QuoteService,
+    FullHomePricingStrategy,
+    {
+      provide: PRICING_STRATEGIES,
+      useFactory: (
+        fullHomePricingStrategy: FullHomePricingStrategy,
+      ): PricingStrategy[] => [fullHomePricingStrategy],
+      inject: [FullHomePricingStrategy],
+    },
+    PricingStrategyResolver,
     makeCounterProvider({
       name: "quotes_created_total",
       help: "Total number of successfully created quotes",

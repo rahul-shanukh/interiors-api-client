@@ -3,6 +3,7 @@ import { CreateQuoteDto } from "../../modules/quotes/application/dto/create-quot
 export class QuoteMapper {
   static toPersistence(dto: CreateQuoteDto, estimatedPrice: number) {
     return {
+      calculatorType: dto.calculatorType,
       bhkType: dto.bhkType,
       rooms: dto.rooms,
       package: dto.package,

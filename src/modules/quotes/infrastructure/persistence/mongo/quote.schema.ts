@@ -14,6 +14,9 @@ class RoomCounts {
 
 @Schema({ timestamps: true })
 export class Quote extends Document {
+  @Prop({ required: true, index: true })
+  calculatorType!: string;
+
   @Prop({ required: true })
   bhkType!: string;
 

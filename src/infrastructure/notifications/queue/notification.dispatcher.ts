@@ -33,6 +33,9 @@ export class NotificationDispatcher {
 
     const payload = Buffer.from(JSON.stringify(context)).toString("base64");
 
+    const serviceAccountEmail = this.configService.getOrThrow<string>(
+      "GCP_TASKS_INVOKER_SERVICE_ACCOUNT_EMAIL",
+    );
     try {
       const [response] = await this.client.createTask({
         parent,
@@ -44,10 +47,12 @@ export class NotificationDispatcher {
             headers: {
               "Content-Type": "application/json",
             },
+
             // 🔒 The OIDC token ensures only Google can trigger this endpoint
-            // oidcToken: {
-            //   serviceAccountEmail,
-            // },
+            oidcToken: {
+              serviceAccountEmail,
+              audience: url, // The audience should match the URL of the endpoint being called
+            },
           },
         },
       });
