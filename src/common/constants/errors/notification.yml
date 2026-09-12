@@ -1,0 +1,25 @@
+Notification:
+  INVALID_CONTEXT:
+    code: 'NOTIFICATION_001'
+    message: 'Notification context is invalid or incomplete.'
+  TEMPLATE_NOT_FOUND:
+    code: 'NOTIFICATION_002'
+    message: 'Template file could not be found.'
+  TEMPLATE_COMPILE_FAILED:
+    code: 'NOTIFICATION_003'
+    message: 'Failed to compile notification template.'
+  PROVIDER_UNAVAILABLE:
+    code: 'NOTIFICATION_004'
+    message: 'Notification provider is offline.'
+  PROVIDER_NOT_FOUND:
+    code: 'NOTIFICATION_005'
+    message: 'No provider routing found for this notification type.'
+  DELIVERY_FAILED:
+    code: 'NOTIFICATION_006'
+    message: 'Provider failed to deliver the notification.'
+  RATE_LIMITED:
+    code: 'NOTIFICATION_007'
+    message: 'Recipient has exceeded the notification rate limit.'
+  DUPLICATE_DETECTED:
+    code: 'NOTIFICATION_008'
+    message: 'Duplicate notification detected within the time window.'

@@ -1,0 +1,18 @@
+{
+  "name": "fireball",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "type": "module",
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
+  },
+  "peerDependencies": {
+    "firebase-admin": "^12.0.0 || ^13.0.0 || ^14.0.0"
+  },
+  "devDependencies": {
+    "firebase-admin": "^12.0.0 || ^13.0.0 || ^14.0.0",
+    "typescript": "^5.5.0"
+  }
+}

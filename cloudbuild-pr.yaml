@@ -1,0 +1,23 @@
+steps:
+  - name: "node:24-alpine"
+    entrypoint: sh
+    args:
+      [
+        "-c",
+        "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile",
+      ]
+
+  - name: "node:24-alpine"
+    entrypoint: sh
+    args: ["-c", "corepack enable && pnpm lint"]
+
+  - name: "node:24-alpine"
+    entrypoint: sh
+    args: ["-c", "corepack enable && pnpm test"]
+
+  - name: "node:24-alpine"
+    entrypoint: sh
+    args: ["-c", "corepack enable && pnpm build"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

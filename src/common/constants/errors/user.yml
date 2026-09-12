@@ -1,0 +1,10 @@
+User:
+  NOT_FOUND:
+    code: 'USER_001'
+    message: 'User does not exist in the system.'
+  INACTIVE:
+    code: 'USER_002'
+    message: 'This user account is deactivated.'
+  ACCOUNT_ALREADY_EXISTS:
+    code: 'USER_003'
+    message: 'An account with this username already exists.'
