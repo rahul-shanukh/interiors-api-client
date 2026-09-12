@@ -71,6 +71,6 @@ export class CatalogSeeder implements OnModuleInit {
       },
     ]);
 
-    this.logger.log('Seeding Complete! You can now run GraphQL queries.');
+    this.logger.log('Catalog seeding completed.');
   }
 }

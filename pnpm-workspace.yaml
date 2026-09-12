@@ -2,10 +2,10 @@ packages:
   - 'packages/*'
 
 allowBuilds:
-  '@apollo/protobufjs': false
   '@firebase/util': false
   '@nestjs/core': false
   '@scarf/scarf': false
+  '@swc/core': true
   bcrypt: false
   protobufjs: false
   unrs-resolver: false

@@ -18,6 +18,9 @@ Run the backend locally:
 ```powershell
 pnpm start:dev
 ```
+## For Extra Port runnings
+
+taskkill /f /im node.exe
 
 ## Testing Quote Notifications with Ngrok
 

@@ -30,7 +30,7 @@ export class CatalogService {
     // 2. Fetch the raw documents from MongoDB
     const rawItems = await this.catalogModel.find(query).exec();
 
-    // 🚀 3. THE FIX: Map the Mongoose documents to perfectly match the GraphQL model
+    // Convert MongoDB ObjectIds to strings for API responses.
     return rawItems.map((item) => ({
       _id: item._id.toString(), // Convert the ObjectId to a standard string!
       name: item.name,
