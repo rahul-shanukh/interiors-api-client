@@ -2,12 +2,22 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsPhoneNumber,
   IsString,
   ValidateNested,
 } from "class-validator";
+import { CalculatorType } from "../../domain/enums/calculator-type.enum";
+import { CreateWardrobeQuoteDto } from "./request/create-wardrobe-quote.dto";
+import { CreateFullHomeQuoteDto } from "./request/create-full-home-quote.dto";
+import { CreateKitchenQuoteDto } from "./request/create-kitchen-quote.dto";
+
+export type AnyQuoteRequestDto =
+  | CreateFullHomeQuoteDto
+  | CreateKitchenQuoteDto
+  | CreateWardrobeQuoteDto;
 
 export class QuoteLocationDto {
   @ApiProperty({ example: "Bangalore" })
@@ -38,6 +48,11 @@ export class QuoteLocationDto {
 
 /** Fields shared by every quote type. */
 export class BaseQuoteRequestDto {
+  @ApiProperty({ enum: CalculatorType })
+  @IsEnum(CalculatorType)
+  @IsNotEmpty()
+  calculatorType!: CalculatorType;
+
   @ApiProperty({ example: "Priya Nair" })
   @IsString()
   @IsNotEmpty()

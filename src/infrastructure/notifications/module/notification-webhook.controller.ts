@@ -15,6 +15,7 @@ import { NotificationPipeline } from "../pipeline/notification.pipeline";
 import { Public } from "src/common/decorators/roles.decorator";
 import { ConfigService } from "@nestjs/config";
 import { OAuth2Client } from "google-auth-library"; // 1. Import your Public decorator
+import { trace } from "@opentelemetry/api";
 
 @Controller("internal/tasks")
 export class NotificationWebhookController {
@@ -49,6 +50,20 @@ export class NotificationWebhookController {
     this.logger.log(
       `📥 Received task from Google Cloud Tasks: ${taskName || "local-manual-trigger"}`,
     );
+
+    const activeTraceId = trace.getActiveSpan()?.spanContext().traceId;
+    if (!context.traceId && activeTraceId) {
+      context.traceId = activeTraceId;
+    }
+
+    // Confirms whether Cloud Tasks traceparent continued into this webhook span.
+    this.logger.log({
+      event: "notification_webhook_trace_context",
+      taskName: taskName || "local-manual-trigger",
+      payloadTraceId: context.traceId,
+      activeTraceId,
+      traceContinued: Boolean(activeTraceId && context.traceId === activeTraceId),
+    });
 
     try {
       // 3. Optional: Log a snippet of the incoming data to verify the quote details

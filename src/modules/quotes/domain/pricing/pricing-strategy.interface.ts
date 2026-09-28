@@ -1,9 +1,9 @@
-import { CreateFullHomeQuoteDto } from "../../application/dto/request/create-full-home-quote.dto";
+import { AnyQuoteRequestDto } from "../../application/dto/base-quote-request.dto";
 import { CalculatorType } from "../enums/calculator-type.enum";
 
 export interface PricingStrategy {
-  readonly version: string;
+  readonly pricingVersion: string;
   supports(type: CalculatorType): boolean;
-  calculateEstimate(quoteRequest: CreateFullHomeQuoteDto): number;
+  calculateEstimate(quoteRequest: AnyQuoteRequestDto): number;
   getPricingSnapshot(): Record<string, unknown>;
 }

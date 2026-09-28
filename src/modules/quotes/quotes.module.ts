@@ -19,6 +19,14 @@ import {
   FullHomeQuote,
   FullHomeQuoteSchema,
 } from "./infrastructure/persistence/mongo/full-home-quote.schema";
+import {
+  KitchenQuote,
+  KitchenQuoteSchema,
+} from "./infrastructure/persistence/mongo/kitchen-quote.schema";
+import {
+  WardrobeQuote,
+  WardrobeQuoteSchema,
+} from "./infrastructure/persistence/mongo/wardrobe-quote.schema";
 import { CustomerService } from "./application/services/customer.service";
 import {
   Customer,
@@ -27,6 +35,8 @@ import {
 import { CacheModule } from "src/infrastructure/cache/cache.module";
 import { CalculatorType } from "./domain/enums/calculator-type.enum";
 import { QuoteRequestRateLimiter } from "src/infrastructure/cache/rate-limiters/quote-request-rate-limiter.service";
+import { KitchenPricingStrategy } from "./domain/pricing/strategies/kitchen-pricing.strategy";
+import { WardrobePricingStrategy } from "./domain/pricing/strategies/wardrobe-pricing.strategy";
 
 @Module({
   imports: [
@@ -41,6 +51,16 @@ import { QuoteRequestRateLimiter } from "src/infrastructure/cache/rate-limiters/
             schema: FullHomeQuoteSchema,
             value: CalculatorType.FULL_HOME,
           },
+          {
+            name: KitchenQuote.name,
+            schema: KitchenQuoteSchema,
+            value: CalculatorType.KITCHEN,
+          },
+          {
+            name: WardrobeQuote.name,
+            schema: WardrobeQuoteSchema,
+            value: CalculatorType.WARDROBE,
+          },
         ],
       },
       { name: Customer.name, schema: CustomerSchema },
@@ -54,12 +74,24 @@ import { QuoteRequestRateLimiter } from "src/infrastructure/cache/rate-limiters/
     QuoteSubmissionGuardService,
     QuoteRequestRateLimiter,
     FullHomePricingStrategy,
+    KitchenPricingStrategy,
+    WardrobePricingStrategy,
     {
       provide: PRICING_STRATEGIES,
       useFactory: (
         fullHomePricingStrategy: FullHomePricingStrategy,
-      ): PricingStrategy[] => [fullHomePricingStrategy],
-      inject: [FullHomePricingStrategy],
+        kitchenPricingStrategy: KitchenPricingStrategy,
+        wardrobePricingStrategy: WardrobePricingStrategy,
+      ): PricingStrategy[] => [
+        fullHomePricingStrategy,
+        kitchenPricingStrategy,
+        wardrobePricingStrategy,
+      ],
+      inject: [
+        FullHomePricingStrategy,
+        KitchenPricingStrategy,
+        WardrobePricingStrategy,
+      ],
     },
     PricingStrategyResolver,
     makeCounterProvider({

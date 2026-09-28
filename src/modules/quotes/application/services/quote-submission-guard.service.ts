@@ -21,19 +21,10 @@ export class QuoteSubmissionGuardService {
   private generateFingerprint(data: NormalizedQuoteData): string {
     let canonical = [
       data.calculatorType,
-      data.bhkType,
-      data.builtupArea,
+      data.specificationsKey,
+      data.email.trim().toLowerCase(),
+      data.phone.trim(),
       data.package,
-      data.email,
-      data.phone,
-      data.location.city,
-      data.location.state,
-      data.location.country,
-      data.rooms.living ?? 0,
-      data.rooms.kitchen ?? 0,
-      data.rooms.bedroom ?? 0,
-      data.rooms.bathroom ?? 0,
-      data.rooms.dining ?? 0,
     ].join("|");
 
     switch (data.calculatorType) {

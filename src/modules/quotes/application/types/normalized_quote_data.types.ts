@@ -1,47 +1,58 @@
+import { CalculatorType } from "../../domain/enums/calculator-type.enum";
+import { AnyQuoteRequestDto } from "../dto/base-quote-request.dto";
+
 export type NormalizedQuoteData = {
   calculatorType: string;
-  bhkType: string;
-  builtupArea: string;
-  package: string;
   email: string;
   phone: string;
+  package: string;
   location: {
     city: string;
     state: string;
     country: string;
   };
-  rooms: {
-    living: number;
-    kitchen: number;
-    bedroom: number;
-    bathroom: number;
-    dining: number;
-  };
+  specificationsKey: string;
 };
 
 /**
  * Normalizes quote DTOs to a standard format for duplicate detection
  */
-export function normalizeQuoteData(dto: any): NormalizedQuoteData {
+export function normalizeQuoteData(
+  dto: AnyQuoteRequestDto,
+): NormalizedQuoteData {
   // Handle different calculator types - they may have different structures
+  let specificationsKey = "";
+  let packageName = "";
+
+  switch (dto.calculatorType) {
+    case CalculatorType.FULL_HOME:
+      packageName = dto.configuration.package;
+      // Combine rooms & bhk into a deterministic string representation for fingerprinting
+      specificationsKey = `${dto.configuration.bhkType}-${dto.configuration.builtupArea}-L${dto.configuration.rooms.living}B${dto.configuration.rooms.bedroom}K${dto.configuration.rooms.kitchen}`;
+      break;
+
+    case CalculatorType.KITCHEN:
+      packageName = dto.configuration.package;
+      // Combine layout & area size for kitchen fingerprinting
+      specificationsKey = `${dto.configuration.layout}-${dto.configuration.builtupArea}`;
+      break;
+
+    case CalculatorType.WARDROBE:
+      packageName = dto.configuration.package;
+      specificationsKey = `${dto.configuration.wardrobeType}-${dto.configuration.dimensions.widthFeet}x${dto.configuration.dimensions.heightFeet}#${dto.configuration.materials.core}-${dto.configuration.materials.finish}$${dto.configuration.accessories.join(",")}`;
+      break;
+  }
+
   return {
     calculatorType: dto.calculatorType,
-    bhkType: dto.configuration.bhkType,
-    builtupArea: dto.configuration.builtupArea,
-    package: dto.configuration.package,
     email: dto.email.trim().toLowerCase(),
-    phone: dto.phone,
+    phone: dto.phone.trim(),
+    package: packageName,
     location: {
-      city: dto.location.city,
-      state: dto.location.state,
-      country: dto.location.country,
+      city: dto.location.city.trim().toLowerCase(),
+      state: dto.location.state.trim().toLowerCase(),
+      country: dto.location.country.trim().toLowerCase(),
     },
-    rooms: {
-      living: dto.configuration.rooms.living,
-      kitchen: dto.configuration.rooms.kitchen,
-      bedroom: dto.configuration.rooms.bedroom,
-      bathroom: dto.configuration.rooms.bathroom,
-      dining: dto.configuration.rooms.dining ?? 0,
-    },
+    specificationsKey,
   };
 }

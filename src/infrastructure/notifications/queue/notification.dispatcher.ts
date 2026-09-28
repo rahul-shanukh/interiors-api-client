@@ -4,6 +4,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { CloudTasksClient } from "@google-cloud/tasks";
 import { NotificationContext } from "../core/types/notification-context.types";
+import { context as otelContext, propagation } from "@opentelemetry/api";
 
 @Injectable()
 export class NotificationDispatcher {
@@ -33,6 +34,12 @@ export class NotificationDispatcher {
 
     const payload = Buffer.from(JSON.stringify(context)).toString("base64");
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    // Carry the current OTel trace into the Cloud Tasks webhook request.
+    propagation.inject(otelContext.active(), headers);
+
     const serviceAccountEmail = this.configService.getOrThrow<string>(
       "GCP_TASKS_INVOKER_SERVICE_ACCOUNT_EMAIL",
     );
@@ -44,9 +51,7 @@ export class NotificationDispatcher {
             httpMethod: "POST",
             url,
             body: payload,
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers,
 
             // 🔒 The OIDC token ensures only Google can trigger this endpoint
             oidcToken: {

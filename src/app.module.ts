@@ -1,6 +1,11 @@
 //Backend\interiors-api-client\src\app.module.ts
 
-import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  OnApplicationShutdown,
+} from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { HealthModule } from "./health/health.module";
@@ -18,24 +23,19 @@ import { QuotesModule } from "./modules/quotes/quotes.module";
 import { PrometheusModule } from "./infrastructure/monitoring/prometheus.module";
 import { MetricsInterceptor } from "./common/interceptors/metrics.interceptor";
 import { LoggerModule } from "nestjs-pino";
+import { loggingOptions } from "./infrastructure/observability/logging/pino.config";
 import { TraceMiddleware } from "./common/middleware/trace.middleware";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
 import { UploadsModule } from "./modules/uploads/module/uploads.module"; // ✅ import the UploadsModule
 import { NotificationModule } from "./infrastructure/notifications/notification.module";
 import { ResilienceModule } from "./infrastructure/resilience/resilience.module";
+import { sdk } from "./infrastructure/observability/telemetry/otel";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    LoggerModule.forRoot({
-      pinoHttp: {
-        transport:
-          process.env.NODE_ENV !== "production"
-            ? { target: "pino-pretty", options: { colorize: true } }
-            : undefined,
-      },
-    }),
+    LoggerModule.forRoot(loggingOptions),
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -82,8 +82,16 @@ import { ResilienceModule } from "./infrastructure/resilience/resilience.module"
     },
   ],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnApplicationShutdown {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(TraceMiddleware).forRoutes("*");
+  }
+
+  async onApplicationShutdown() {
+    try {
+      await sdk.shutdown();
+    } catch (error) {
+      console.error("Error shutting down OpenTelemetry", error);
+    }
   }
 }

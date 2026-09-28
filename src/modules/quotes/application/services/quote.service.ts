@@ -2,7 +2,7 @@ import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { InjectConnection, InjectModel } from "@nestjs/mongoose";
 import { Connection, Model } from "mongoose";
 import { Quote } from "../../infrastructure/persistence/mongo/quote.schema";
-import { CreateFullHomeQuoteDto } from "../dto/request/create-full-home-quote.dto";
+import { AnyQuoteRequestDto } from "../dto/base-quote-request.dto";
 import { normalizeQuoteData } from "../types/normalized_quote_data.types";
 import { QuoteMapper } from "src/infrastructure/mappers/quote.mapper";
 import { InjectMetric } from "@willsoto/nestjs-prometheus";
@@ -21,6 +21,9 @@ import { QuoteSubmissionGuardService } from "./quote-submission-guard.service";
 import { CustomerService } from "./customer.service";
 import { FullHomeQuote } from "../../infrastructure/persistence/mongo/full-home-quote.schema";
 import { CalculatorType } from "../../domain/enums/calculator-type.enum";
+import { KitchenQuote } from "../../infrastructure/persistence/mongo/kitchen-quote.schema";
+import { WardrobeQuote } from "../../infrastructure/persistence/mongo/wardrobe-quote.schema";
+import { trace } from "@opentelemetry/api";
 
 @Injectable()
 export class QuoteService {
@@ -30,22 +33,47 @@ export class QuoteService {
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(FullHomeQuote.name)
     private fullHomeQuoteModel: Model<FullHomeQuote>,
+    @InjectModel(KitchenQuote.name)
+    private kitchenQuoteModel: Model<KitchenQuote>,
+    @InjectModel(WardrobeQuote.name)
+    private wardrobeQuoteModel: Model<WardrobeQuote>,
     @InjectMetric("quotes_created_total")
     private readonly quotesCreatedCounter: Counter<string>,
     private readonly notificationDispatcher: NotificationDispatcher,
     private readonly pricingStrategyResolver: PricingStrategyResolver,
-    private readonly quoteSubmissionGuardService: QuoteSubmissionGuardService,
+    private readonly quoteQuickSubmissionGuardService: QuoteSubmissionGuardService,
     private readonly customerService: CustomerService,
     private readonly quoteRequestRateLimiter: QuoteRequestRateLimiter,
   ) {}
 
-  async createQuoteRequest(dto: CreateFullHomeQuoteDto, clientIp: string) {
+  async createQuoteRequest(dto: AnyQuoteRequestDto, clientIp: string) {
     await this.quoteRequestRateLimiter.check(dto, clientIp);
+
+    // i.e.., for full-home : BhkType , for kitchen : Layout , for wardrobe : Wardrobe Type
+    let summaryLabel = "";
+    let packageName = "";
+
+    switch (dto.calculatorType) {
+      case CalculatorType.FULL_HOME:
+        summaryLabel = dto.configuration.bhkType;
+        packageName = dto.configuration.package;
+        break;
+      case CalculatorType.KITCHEN:
+        summaryLabel = dto.configuration.layout;
+        packageName = dto.configuration.package;
+        break;
+      case CalculatorType.WARDROBE:
+        summaryLabel = dto.configuration.wardrobeType;
+        packageName = dto.configuration.package;
+        break;
+    }
 
     // Redis Duplicate Guard (Short-term spam prevention)
     const normalized = normalizeQuoteData(dto);
     const { fingerprint, isDuplicate } =
-      await this.quoteSubmissionGuardService.isDuplicateSubmission(normalized);
+      await this.quoteQuickSubmissionGuardService.isDuplicateSubmission(
+        normalized,
+      );
 
     if (isDuplicate) {
       this.logger.warn({
@@ -60,18 +88,20 @@ export class QuoteService {
       );
     }
 
-    const existingQuote = await this.fullHomeQuoteModel.findOneAndUpdate(
+    // ==========================================
+    // PATH A: EXISTING QUOTE
+    // ==========================================
+
+    const quoteModel = this.getQuoteModel(dto.calculatorType);
+
+    const existingQuote = await quoteModel.findOneAndUpdate(
       { fingerPrint: fingerprint },
       {
         $inc: { resubmissionCount: 1 },
         $set: { lastResubmittedAt: new Date() },
       },
-      { new: true },
+      { new: true }, // return true
     );
-
-    // ==========================================
-    // PATH A: EXISTING QUOTE
-    // ==========================================
 
     if (existingQuote) {
       this.logger.log({
@@ -82,29 +112,21 @@ export class QuoteService {
         resubmissionCount: existingQuote.resubmissionCount,
       });
 
-      // Release the Redis lock immediately since we handled it gracefully
-      try {
-        await this.quoteSubmissionGuardService.releaseLock(fingerprint);
-      } catch (error) {
-        this.logger.error({
-          event: "failed_to_release_quote_submission_lock",
-          fingerprint,
-          error,
-        });
-      }
-
       // Re-send the notification so the user gets the email again
       const notificationStatus = await this.dispatchQuoteNotification(
         existingQuote._id.toString(),
-        dto,
+        dto.email,
+        dto.name,
+        summaryLabel,
+        packageName,
         existingQuote.customer.toString(),
-        existingQuote.customerKey, // Pass the key!
+        existingQuote.customerKey,
         existingQuote.estimatedPrice,
       );
 
       return {
         success: true,
-        message: "Quote retrieved successfully",
+        message: "Quote retrieved successfully, duplicate submission handled.",
         quoteId: existingQuote._id.toString(),
         estimatedPrice: existingQuote.estimatedPrice,
         notificationStatus,
@@ -139,7 +161,7 @@ export class QuoteService {
         const quoteData = QuoteMapper.toPersistence(
           dto,
           calculatedPrice,
-          pricingStrategy.version,
+          pricingStrategy.pricingVersion,
           pricingStrategy.getPricingSnapshot(),
           customer._id.toString(),
           customer.customerKey,
@@ -149,24 +171,14 @@ export class QuoteService {
 
         quoteData.fingerPrint = fingerprint;
 
-        let newQuote: Quote;
-
-        switch (dto.calculatorType) {
-          case CalculatorType.FULL_HOME:
-            newQuote = new this.fullHomeQuoteModel(quoteData);
-            break;
-          default:
-            throw new Error(
-              `Unsupported calculator type: ${dto.calculatorType}`,
-            );
-        }
+        const newQuote = new quoteModel(quoteData);
         savedQuote = await newQuote.save({ session });
       });
       this.quotesCreatedCounter.inc({ status: "success" });
     } catch (error: any) {
       // 1. Safe cleanup: Never allow Redis cleanup errors to mask the main DB error
       try {
-        await this.quoteSubmissionGuardService.releaseLock(fingerprint);
+        await this.quoteQuickSubmissionGuardService.releaseLock(fingerprint);
       } catch (lockError) {
         this.logger.error(
           "Failed to release duplicate submission lock",
@@ -195,12 +207,15 @@ export class QuoteService {
       await session.endSession();
     }
     // Release the duplicate submission lock after successful transaction
-    await this.quoteSubmissionGuardService.releaseLock(fingerprint);
+    await this.quoteQuickSubmissionGuardService.releaseLock(fingerprint);
 
     // PATH B Notification Dispatch
     const notificationStatus = await this.dispatchQuoteNotification(
       savedQuote._id.toString(),
-      dto,
+      dto.email,
+      dto.name,
+      summaryLabel,
+      packageName,
       customer._id.toString(),
       customer.customerKey,
       calculatedPrice,
@@ -222,32 +237,35 @@ export class QuoteService {
    * Private helper to dispatch quote emails cleanly for both new and existing quotes
    */
   private async dispatchQuoteNotification(
-    quoteId: string, // strictly a string
-    dto: CreateFullHomeQuoteDto,
-    customerId: string, // strictly a string
-    customerKey: string, // strictly a string
+    quoteId: string,
+    email: string,
+    name: string,
+    summaryLabel: string,
+    packageName: string,
+    customerId: string,
+    customerKey: string,
     calculatedPrice: number,
   ) {
     try {
       await this.notificationDispatcher.dispatch({
         notificationId: quoteId, // Use directly
-        traceId: `tr-${Date.now()}`,
+        traceId: this.getCurrentTraceId(),
         type: "EMAIL" as NotificationType,
         priority: "high" as NotificationPriority,
         category: "TRANSACTIONAL" as NotificationCategory,
         recipient: {
-          email: dto.email,
-          name: dto.name || "Valued Client",
+          email,
+          name,
           userId: customerId, // Use directly
           customerKey: customerKey, // Use directly
         },
         subject: "EastInteria Interiors - Your Estimate is Ready",
         templateName: "quote-estimate",
         templateData: {
-          name: dto.name,
-          bhkType: dto.configuration.bhkType,
+          name,
+          label: summaryLabel,
           estimatedPrice: calculatedPrice,
-          package: dto.configuration.package,
+          package: packageName,
         },
         status: "PENDING" as NotificationStatus,
         attempts: 0,
@@ -262,5 +280,21 @@ export class QuoteService {
       });
       return "FAILED_TO_QUEUE";
     }
+  }
+
+  private getQuoteModel(calculatorType: CalculatorType): Model<any> {
+    switch (calculatorType) {
+      case CalculatorType.FULL_HOME:
+        return this.fullHomeQuoteModel;
+      case CalculatorType.KITCHEN:
+        return this.kitchenQuoteModel;
+      case CalculatorType.WARDROBE:
+        return this.wardrobeQuoteModel;
+      default:
+        throw new Error(`Unsupported calculator type: ${calculatorType}`);
+    }
+  }
+  private getCurrentTraceId(): string {
+    return trace.getActiveSpan()?.spanContext().traceId ?? "missing-trace-id";
   }
 }

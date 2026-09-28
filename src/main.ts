@@ -1,5 +1,7 @@
 // backend/src/main.ts
-import "./infrastructure/observability/telemetry/otel";
+
+import "./infrastructure/observability/telemetry/otel"; // 1. MUST BE FIRST IMPORT
+
 import { EventEmitter } from "events";
 EventEmitter.defaultMaxListeners = 20;
 import { NestFactory } from "@nestjs/core";
@@ -7,7 +9,6 @@ import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
 import { createSession } from "./infrastructure/session/session.config";
-import { TraceMiddleware } from "./common/middleware/trace.middleware";
 import { Logger } from "nestjs-pino";
 import { setupOpenApi } from "./infrastructure/docs/openapi.setup";
 import { CacheService } from "./infrastructure/cache/cache.service";
@@ -52,15 +53,10 @@ async function bootstrap() {
     }),
   );
 
-  const traceMiddleware = app.get(TraceMiddleware);
-  app.use(traceMiddleware.use.bind(traceMiddleware));
-
   setupOpenApi(app);
 
   const port = parseInt(process.env.PORT || "3000", 10);
   await app.listen(port, "0.0.0.0");
   console.log(`🚀 Application is running on: http://localhost:${port}`);
-
-  
 }
 bootstrap();

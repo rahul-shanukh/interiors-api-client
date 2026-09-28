@@ -1,19 +1,17 @@
-import { CreateFullHomeQuoteDto } from "src/modules/quotes/application/dto/request/create-full-home-quote.dto";
 import { CalculatorType } from "../../enums/calculator-type.enum";
 import { PricingStrategy } from "../pricing-strategy.interface";
-import { Logger } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { InjectMetric } from "@willsoto/nestjs-prometheus";
 import { Model } from "mongoose";
 import { Quote } from "src/modules/quotes/infrastructure/persistence/mongo/quote.schema";
-import { Counter } from "prom-client";
-import { NotificationDispatcher } from "src/infrastructure/notifications/queue/notification.dispatcher";
 import { ConfigService } from "@nestjs/config";
+import { AnyQuoteRequestDto } from "src/modules/quotes/application/dto/base-quote-request.dto";
 
+@Injectable()
 export class FullHomePricingStrategy implements PricingStrategy {
   private readonly logger = new Logger(FullHomePricingStrategy.name);
 
-  readonly version: string;
+  readonly pricingVersion: string;
 
   private readonly PRICING = {
     baseBhk: {
@@ -42,21 +40,17 @@ export class FullHomePricingStrategy implements PricingStrategy {
 
   constructor(
     @InjectModel(Quote.name) private quoteModel: Model<Quote>,
-    @InjectMetric("quotes_created_total")
-    private readonly quotesCreatedCounter: Counter<string>,
-    private readonly notificationDispatcher: NotificationDispatcher,
     private readonly config: ConfigService,
   ) {
-    this.version =
-      this.config.get<string>("ACTIVE_FULL_HOME_PRICING_VERSION") ||
-      "full-home-v1";
+    this.pricingVersion =
+      this.config.get<string>("FULL_HOME_PRICING_VERSION") || "full-home-v1";
   }
 
   supports(type: CalculatorType): boolean {
     return type === CalculatorType.FULL_HOME;
   }
 
-  calculateEstimate(quoteRequest: CreateFullHomeQuoteDto): number {
+  calculateEstimate(quoteRequest: AnyQuoteRequestDto): number {
     // 1. Guard check for calculator type using strict equality ===
     if (quoteRequest.calculatorType !== CalculatorType.FULL_HOME) {
       throw new Error(
@@ -97,6 +91,10 @@ export class FullHomePricingStrategy implements PricingStrategy {
   }
 
   getPricingSnapshot(): Record<string, unknown> {
-    return structuredClone(this.PRICING);
+    return {
+      strategyVersion: this.pricingVersion,
+      ...structuredClone(this.PRICING),
+      calculatedAt: new Date().toISOString(),
+    };
   }
 }
