@@ -24,4 +24,7 @@ export class CreateQuoteResponseDto {
     description: 'Calculated estimate amount.',
   })
   estimatedPrice!: number;
+
+  @ApiProperty({ description: "Notification job status", example: "QUEUED" })
+  notificationStatus?: string;
 }

@@ -4,6 +4,20 @@
 
 The quotes module handles quote creation, pricing rules, persistence, and notification flow.
 
+## Idempotent quote requests
+
+`POST /quotes/request` requires a UUID v4 `Idempotency-Key`. The key is scoped
+to the normalized caller email and operation name (`quote.create`), so a key
+cannot expose another caller's response or collide with a different operation.
+Reusing a key with changed request data returns HTTP 409. The quote, completed
+response, and notification outbox job are committed in the same MongoDB
+transaction. Email dispatch is retried from the outbox with exponential backoff.
+
+Idempotency records are protected for 24 hours; MongoDB's TTL index removes
+expired records asynchronously, so retries beyond that window may create a new
+quote. Configure `IDEMPOTENCY_SECRET` (or `CUSTOMER_KEY_SECRET`) consistently
+across all API instances so caller scoping remains stable.
+
 ## Main Areas
 
 - `application/` — quote workflow and service logic

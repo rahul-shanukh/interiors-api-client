@@ -47,9 +47,9 @@ resource "google_cloud_tasks_queue" "notifications_high" {
   }
 
   retry_config {
-    max_attempts       = 8
-    max_retry_duration = "3600s"
-    min_backoff        = "5s"
+    max_attempts       = 5
+    max_retry_duration = "900s"
+    min_backoff        = "10s"
     max_backoff        = "300s"
     max_doublings      = 5
   }

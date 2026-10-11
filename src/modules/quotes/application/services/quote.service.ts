@@ -9,13 +9,6 @@ import { InjectMetric } from "@willsoto/nestjs-prometheus";
 import { Counter } from "prom-client";
 import { QuoteRequestRateLimiter } from "src/infrastructure/cache/rate-limiters/quote-request-rate-limiter.service";
 import { NotificationDispatcher } from "src/infrastructure/notifications/queue/notification.dispatcher";
-import {
-  NotificationCategory,
-  NotificationPriority,
-  NotificationStatus,
-  NotificationType,
-} from "src/infrastructure/notifications/core/types/notification.types";
-
 import { PricingStrategyResolver } from "../pricing/pricing-strategy-resolver.service";
 import { QuoteSubmissionGuardService } from "./quote-submission-guard.service";
 import { CustomerService } from "./customer.service";
@@ -24,7 +17,22 @@ import { CalculatorType } from "../../domain/enums/calculator-type.enum";
 import { KitchenQuote } from "../../infrastructure/persistence/mongo/kitchen-quote.schema";
 import { WardrobeQuote } from "../../infrastructure/persistence/mongo/wardrobe-quote.schema";
 import { trace } from "@opentelemetry/api";
+import { RecaptchaService } from "src/infrastructure/recaptcha/recaptcha.service";
+import { IdempotencyService } from "src/infrastructure/idempotency/idempotency.service";
+import { CreateQuoteResponseDto } from "../dto/response/create-quote-response.dto";
+import type {
+  NotificationCategory,
+  NotificationPriority,
+  NotificationStatus,
+  NotificationType,
+} from "src/infrastructure/notifications/core/types/notification.types";
 
+export interface IdempotencyContext {
+  caller: string;
+  operation: string;
+  key: string;
+  request: Record<string, any>;
+}
 @Injectable()
 export class QuoteService {
   private readonly logger = new Logger(QuoteService.name);
@@ -44,15 +52,42 @@ export class QuoteService {
     private readonly quoteQuickSubmissionGuardService: QuoteSubmissionGuardService,
     private readonly customerService: CustomerService,
     private readonly quoteRequestRateLimiter: QuoteRequestRateLimiter,
+    private readonly recaptchaService: RecaptchaService,
+    private readonly idempotencyService: IdempotencyService,
   ) {}
 
-  async createQuoteRequest(dto: AnyQuoteRequestDto, clientIp: string) {
+  async createQuoteRequest(
+    dto: AnyQuoteRequestDto,
+    clientIp: string,
+    idempotencyKey: string,
+  ): Promise<CreateQuoteResponseDto> {
+    const { recaptchaToken, ...idempotentPayload } = dto;
+
+    if (!idempotencyKey) {
+      throw new ConflictException("Idempotency-Key is required.");
+    }
+
+    // Rate limit check to prevent abuse of the quote submission endpoint.
     await this.quoteRequestRateLimiter.check(dto, clientIp);
+
+    // Verify before duplicate handling, database writes, or notifications.
+    await this.recaptchaService.verify(recaptchaToken, "quote_submit");
+
+    const idempotencyContext: IdempotencyContext = {
+      caller: dto.email,
+      operation: "quote.create",
+      key: idempotencyKey,
+      request: idempotentPayload,
+    };
+    const previousResult =
+      await this.idempotencyService.getSavedResult(idempotencyContext);
+    if (previousResult) return previousResult as CreateQuoteResponseDto;
 
     // i.e.., for full-home : BhkType , for kitchen : Layout , for wardrobe : Wardrobe Type
     let summaryLabel = "";
     let packageName = "";
 
+    // Determine summary label and package name based on calculator type
     switch (dto.calculatorType) {
       case CalculatorType.FULL_HOME:
         summaryLabel = dto.configuration.bhkType;
@@ -112,8 +147,9 @@ export class QuoteService {
         resubmissionCount: existingQuote.resubmissionCount,
       });
 
-      // Re-send the notification so the user gets the email again
-      const notificationStatus = await this.dispatchQuoteNotification(
+      // Resubmission means the customer is asking for their quote again,
+      // so always re-send the notification even if it was sent before.
+      const resendContext = this.buildQuoteNotificationContext(
         existingQuote._id.toString(),
         dto.email,
         dto.name,
@@ -124,12 +160,21 @@ export class QuoteService {
         existingQuote.estimatedPrice,
       );
 
+      void this.notificationDispatcher
+        .dispatch(resendContext)
+        .catch((err) =>
+          this.logger.error(
+            `Failed to dispatch resend notification for quote ID: ${existingQuote._id.toString()}`,
+            err,
+          ),
+        );
+
       return {
         success: true,
         message: "Quote retrieved successfully, duplicate submission handled.",
         quoteId: existingQuote._id.toString(),
         estimatedPrice: existingQuote.estimatedPrice,
-        notificationStatus,
+        notificationStatus: "QUEUED",
       };
     }
 
@@ -149,6 +194,7 @@ export class QuoteService {
 
     try {
       await session.withTransaction(async () => {
+        await this.idempotencyService.claim(idempotencyContext, session);
         customer = await this.customerService.findOrCreateCustomer(
           {
             email: dto.email,
@@ -173,6 +219,24 @@ export class QuoteService {
 
         const newQuote = new quoteModel(quoteData);
         savedQuote = await newQuote.save({ session });
+        const response = {
+          success: true,
+          message: "Quote generated successfully",
+          quoteId: savedQuote._id.toString(),
+          estimatedPrice: calculatedPrice,
+          notificationStatus: "QUEUED",
+        };
+        this.logger.log(
+          `Quote created successfully with ID: ${savedQuote._id.toString()}`,
+        );
+        await this.idempotencyService.saveResult(
+          idempotencyContext,
+          response,
+          session,
+        );
+        this.logger.log(
+          `Idempotency result saved successfully for quote ID: ${savedQuote._id.toString()}`,
+        );
       });
       this.quotesCreatedCounter.inc({ status: "success" });
     } catch (error: any) {
@@ -184,6 +248,15 @@ export class QuoteService {
           "Failed to release duplicate submission lock",
           lockError,
         );
+      }
+
+      if (
+        error instanceof ConflictException &&
+        !error.message.includes("fingerPrint")
+      ) {
+        const concurrentResult =
+          await this.idempotencyService.getCompletedResult(idempotencyContext);
+        if (concurrentResult) return concurrentResult as CreateQuoteResponseDto;
       }
 
       // 2. Catch the MongoDB Race Condition
@@ -210,10 +283,12 @@ export class QuoteService {
     await this.quoteQuickSubmissionGuardService.releaseLock(fingerprint);
 
     // PATH B Notification Dispatch
-    const notificationStatus = await this.dispatchQuoteNotification(
+    // Fire-and-forget after commit: the response must not wait on GCP latency,
+    // and a dispatch failure must not fail the already-persisted quote.
+    const notificationContext = this.buildQuoteNotificationContext(
       savedQuote._id.toString(),
-      dto.email,
-      dto.name,
+      customer.email,
+      customer.name,
       summaryLabel,
       packageName,
       customer._id.toString(),
@@ -221,22 +296,29 @@ export class QuoteService {
       calculatedPrice,
     );
 
+    this.logger.log(
+      `Dispatching quote notification for quote ID: ${savedQuote._id.toString()}`,
+    );
+
+    void this.notificationDispatcher
+      .dispatch(notificationContext)
+      .catch((dispatchError) =>
+        this.logger.error(
+          `Failed to dispatch quote notification for quote ID: ${savedQuote._id.toString()}`,
+          dispatchError,
+        ),
+      );
+
     return {
       success: true,
       message: "Quote generated successfully",
       quoteId: savedQuote._id.toString(),
       estimatedPrice: calculatedPrice,
-      notificationStatus,
+      notificationStatus: "QUEUED",
     };
   }
 
-  /**
-   * Private helper to dispatch quote emails cleanly for both new and existing quotes
-   */
-  /**
-   * Private helper to dispatch quote emails cleanly for both new and existing quotes
-   */
-  private async dispatchQuoteNotification(
+  private buildQuoteNotificationContext(
     quoteId: string,
     email: string,
     name: string,
@@ -246,40 +328,26 @@ export class QuoteService {
     customerKey: string,
     calculatedPrice: number,
   ) {
-    try {
-      await this.notificationDispatcher.dispatch({
-        notificationId: quoteId, // Use directly
-        traceId: this.getCurrentTraceId(),
-        type: "EMAIL" as NotificationType,
-        priority: "high" as NotificationPriority,
-        category: "TRANSACTIONAL" as NotificationCategory,
-        recipient: {
-          email,
-          name,
-          userId: customerId, // Use directly
-          customerKey: customerKey, // Use directly
-        },
-        subject: "EastInteria Interiors - Your Estimate is Ready",
-        templateName: "quote-estimate",
-        templateData: {
-          name,
-          label: summaryLabel,
-          estimatedPrice: calculatedPrice,
-          package: packageName,
-        },
-        status: "PENDING" as NotificationStatus,
-        attempts: 0,
-        createdAt: new Date(),
-        metadata: {},
-      });
-      return "QUEUED";
-    } catch (notificationError) {
-      this.logger.error("Failed to dispatch notification for quote", {
-        quoteId,
-        error: notificationError,
-      });
-      return "FAILED_TO_QUEUE";
-    }
+    return {
+      notificationId: quoteId,
+      traceId: this.getCurrentTraceId(),
+      type: "EMAIL" as NotificationType,
+      priority: "high" as NotificationPriority,
+      category: "TRANSACTIONAL" as NotificationCategory,
+      recipient: { email, name, userId: customerId, customerKey },
+      subject: "EastInteria Interiors - Your Estimate is Ready",
+      templateName: "quote-estimate",
+      templateData: {
+        name,
+        label: summaryLabel,
+        estimatedPrice: calculatedPrice,
+        package: packageName,
+      },
+      status: "PENDING" as NotificationStatus,
+      attempts: 0,
+      createdAt: new Date(),
+      metadata: {},
+    };
   }
 
   private getQuoteModel(calculatorType: CalculatorType): Model<any> {

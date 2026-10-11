@@ -40,6 +40,16 @@ export class NotificationDbService implements INotificationTracker {
     }
   }
 
+  // Cloud Tasks retries are at-least-once: a task that already sent the email
+  // must be acknowledged (200) without sending it again.
+  async isAlreadyDelivered(context: NotificationContext): Promise<boolean> {
+    const existing = await this.logModel
+      .findOne({ notificationId: context.notificationId, status: "delivered" })
+      .lean()
+      .exec();
+    return !!existing;
+  }
+
   async recordResult(
     context: NotificationContext,
     result: NotificationResult,

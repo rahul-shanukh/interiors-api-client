@@ -9,7 +9,7 @@ import type {
 
 @Schema({ timestamps: true, collection: "notification_logs" })
 export class NotificationLog extends Document {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true, index: true, unique: true })
   notificationId!: string; // 👈 Notice the !
 
   @Prop({ index: true })
@@ -33,7 +33,7 @@ export class NotificationLog extends Document {
   @Prop({ required: true, default: "PENDING", type: String })
   status!: NotificationStatus;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String })
   provider!: NotificationProvider;
 
   @Prop({ type: Object })

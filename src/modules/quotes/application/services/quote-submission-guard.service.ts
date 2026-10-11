@@ -25,6 +25,8 @@ export class QuoteSubmissionGuardService {
       data.email.trim().toLowerCase(),
       data.phone.trim(),
       data.package,
+      data.location.city,
+      data.location.state,
     ].join("|");
 
     switch (data.calculatorType) {
