@@ -1,36 +1,31 @@
-# name: NestJS CI Pipeline
+name: NestJs CI
 
-# on:
-#   push:
-#     branches: ["main"]
-#   pull_request:
-#     branches: ["main"]
+on:
+  push:
+    branches: [dev, pre-prod, prod]
+  pull_request:
+    branches: [dev, pre-prod, prod]
 
-# jobs:
-#   build-and-test:
-#     name: Build & Test
-#     runs-on: ubuntu-latest
+permissions:
+  contents: read
 
-#     steps:
-#       - name: Checkout Code
-#         uses: actions/checkout@v4
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: "20" # Match this to your local Node version
-#           cache: "npm" # Automatically caches dependencies to make builds super fast
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
-#       - name: Install Dependencies
-#         run: npm ci
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
 
-#       - name: Check Formatting & Linting
-#         run: |
-#           npm run lint
-#           npm run format
-
-#       - name: Build Application
-#         run: npm run build
-
-#       - name: Run Unit Tests
-#         run: npm run test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run build
+      - run: pnpm run test
