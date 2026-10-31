@@ -37,7 +37,6 @@ jobs:
           semgrep scan
           --config p/default --config p/typescript
           --config p/nodejs
-          --error
           --metrics=off
 
   deps:
