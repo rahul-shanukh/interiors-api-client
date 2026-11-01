@@ -98,9 +98,6 @@ importers:
       express-session:
         specifier: 1.19.0
         version: 1.19.0(supports-color@5.5.0)
-      fireball:
-        specifier: workspace:*
-        version: link:packages/fireball
       firebase-admin:
         specifier: ^14.2.0
         version: 14.2.0(supports-color@5.5.0)
@@ -210,19 +207,6 @@ importers:
       typescript-eslint:
         specifier: ^8.65.0
         version: 8.65.0(eslint@9.39.4(supports-color@5.5.0))(supports-color@5.5.0)(typescript@5.9.3)
-
-  packages/fireball:
-    dependencies:
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-    devDependencies:
-      firebase-admin:
-        specifier: ^12.0.0 || ^13.0.0 || ^14.0.0
-        version: 14.2.0(supports-color@10.2.2)
-      typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
 
 packages:
 

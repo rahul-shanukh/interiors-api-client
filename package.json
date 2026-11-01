@@ -43,7 +43,6 @@
     "dataloader": "2.2.3",
     "express": "^5.2.1",
     "express-session": "1.19.0",
-    "fireball": "workspace:*",
     "firebase-admin": "^14.2.0",
     "graphql": "16.13.2",
     "handlebars": "4.7.10",
