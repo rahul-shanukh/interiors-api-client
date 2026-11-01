@@ -11,7 +11,7 @@ steps:
     args:
       [
         "-c",
-        "corepack enable && corepack prepare pnpm@10 --activate && pnpm install --frozen-lockfile",
+        "corepack enable && corepack prepare pnpm@11.11.0 --activate && pnpm install --frozen-lockfile",
       ]
 
   - name: "node:24-alpine"
@@ -19,7 +19,7 @@ steps:
     args:
       [
         "-c",
-        "corepack enable && corepack prepare pnpm@10 --activate && pnpm lint",
+        "corepack enable && corepack prepare pnpm@11.11.0 --activate && pnpm lint",
       ]
 
   - name: "node:24-alpine"
@@ -27,7 +27,7 @@ steps:
     args:
       [
         "-c",
-        "corepack enable && corepack prepare pnpm@10 --activate && pnpm test",
+        "corepack enable && corepack prepare pnpm@11.11.0 --activate && pnpm test",
       ]
 
   - name: "gcr.io/cloud-builders/docker"

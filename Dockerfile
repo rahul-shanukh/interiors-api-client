@@ -1,5 +1,5 @@
 FROM node:24-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10 --activate
+RUN corepack enable && corepack prepare pnpm@11.11.0 --activate
 WORKDIR /app
 
 FROM base AS deps
@@ -13,7 +13,7 @@ RUN pnpm install --offline
 RUN pnpm build
 
 FROM node:24-alpine AS runtime
-RUN corepack enable && corepack prepare pnpm@10 --activate
+RUN corepack enable && corepack prepare pnpm@11.11.0 --activate
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build --chown=node:node /app/dist ./dist

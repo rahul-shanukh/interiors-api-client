@@ -1,8 +1,9 @@
 allowBuilds:
-  '@apollo/protobufjs': false
+  '@apollo/protobufjs': true
   '@firebase/util': false
-  '@nestjs/core': false
-  '@scarf/scarf': false
-  bcrypt: false
-  protobufjs: false
-  unrs-resolver: false
+  '@nestjs/core': true
+  '@parcel/watcher': false
+  '@scarf/scarf': true
+  bcrypt: true
+  protobufjs: true
+  unrs-resolver: true
