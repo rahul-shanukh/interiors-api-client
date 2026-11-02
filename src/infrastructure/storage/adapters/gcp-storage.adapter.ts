@@ -77,10 +77,10 @@ export class GcpStorageAdapter implements IStorageProvider {
         expiresInSeconds,
       });
 
-      // Handle custom domains vs default GCP storage domains smoothly
-      const publicUrl = this.publicDomain.includes("storage.googleapis.com")
-        ? `${this.publicDomain}/${fileKey}`
-        : `${this.publicDomain}/${fileKey}`;
+      if (!this.isAllowedPublicDomain(this.publicDomain)) {
+        throw new Error("Invalid GCS public domain URL");
+      }
+      const publicUrl = `${this.publicDomain}/${fileKey}`;
 
       return {
         uploadUrl,
@@ -101,6 +101,28 @@ export class GcpStorageAdapter implements IStorageProvider {
         MediaErrorCode.PRESIGNED_URL_FAILED, // Ensure you have this in your error-codes.generated.ts
         HttpStatus.SERVICE_UNAVAILABLE,
       );
+    }
+  }
+
+  private isAllowedPublicDomain(value: string): boolean {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return false;
+    }
+
+    if (url.protocol !== "https:") return false;
+    if (url.hostname === "storage.googleapis.com") return true;
+
+    const customDomain = this.configService.get<string>("GCS_PUBLIC_DOMAIN");
+    if (!customDomain) return false;
+
+    try {
+      const customUrl = new URL(customDomain);
+      return customUrl.protocol === "https:" && url.hostname === customUrl.hostname;
+    } catch {
+      return false;
     }
   }
 }
