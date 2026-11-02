@@ -40,6 +40,12 @@ describe("Quote submission reCAPTCHA integration", () => {
     };
     const limiter = { check: jest.fn().mockResolvedValue(undefined) };
     const recaptcha = { verify: jest.fn().mockResolvedValue(undefined) };
+    const idempotencyService = {
+      getSavedResult: jest.fn().mockResolvedValue(null),
+      claim: jest.fn().mockResolvedValue(undefined),
+      saveResult: jest.fn().mockResolvedValue(undefined),
+      getCompletedResult: jest.fn().mockResolvedValue(null),
+    };
     const args = [
       connection,
       model,
@@ -52,6 +58,7 @@ describe("Quote submission reCAPTCHA integration", () => {
       {},
       limiter,
       recaptcha,
+      idempotencyService,
     ];
     const service = new QuoteService(
       ...(args as unknown as ConstructorParameters<typeof QuoteService>),
@@ -64,6 +71,7 @@ describe("Quote submission reCAPTCHA integration", () => {
       guard,
       limiter,
       recaptcha,
+      idempotencyService,
     };
   }
 
