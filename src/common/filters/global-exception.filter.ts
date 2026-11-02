@@ -6,7 +6,6 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
-import { GqlArgumentsHost, GqlContextType } from "@nestjs/graphql";
 import { BaseException } from "../exceptions/base.exception";
 
 @Catch()
@@ -22,25 +21,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
     const { httpAdapter } = this.httpAdapterHost;
 
-    // 1️⃣ GraphQL Protection (Keep your existing logic)
-    // 1️⃣ GraphQL Handshake
-    if (host.getType<GqlContextType>() === "graphql") {
-      const gqlHost = GqlArgumentsHost.create(host); // ✅ correct
-      const ctx = gqlHost.getContext();
-      const req = ctx.req; // ✅ this is the real Express request with traceId
-
-      const traceId = req?.[this.TRACE_REQUEST_KEY];
-
-      if (exception instanceof Error) {
-        (exception as any).traceId = traceId;
-
-        if (exception instanceof BaseException) {
-          (exception as any).code = exception.errorCode;
-        }
-      }
-
-      throw exception;
-    }
     const ctx = host.switchToHttp();
     const request = ctx.getRequest();
     const response = ctx.getResponse();

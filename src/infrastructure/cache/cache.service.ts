@@ -40,4 +40,28 @@ export class CacheService {
   increment(key: string, ttl?: number): Promise<number> {
     return this.strategy.increment(key, ttl);
   }
+
+  async slidingWindowRateLimit(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<boolean> {
+    return this.strategy.slidingWindowRateLimit(key, limit, windowSeconds);
+  }
+
+  async tokenBucketRateLimit(
+    key: string,
+    refillRate: number,
+    intervalSeconds: number,
+    maxTokens: number,
+  ): Promise<boolean> {
+    return this.strategy.tokenBucketRateLimit(
+      key,
+      refillRate,
+      intervalSeconds,
+      maxTokens,
+    );
+  }
+
+  
 }

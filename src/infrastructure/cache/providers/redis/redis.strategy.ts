@@ -77,4 +77,20 @@ export class RedisStrategy implements ICacheStrategy {
 
     return count;
   }
+
+  slidingWindowRateLimit(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
+
+  tokenBucketRateLimit(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
 }

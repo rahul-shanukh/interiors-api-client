@@ -1,24 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength } from 'class-validator';
+//src/modules/user/application/dto/activate-user.dto.ts
 
-// DTO for user activation - now simplified to just employee ID and password
-// The employee ID will serve as both the identifier and the username
+import { ApiProperty } from "@nestjs/swagger";
+import { IsString, IsNotEmpty, MinLength } from "class-validator";
+
 export class ActivateUserDto {
   @ApiProperty({
-    example: 'SE282',
-    description: 'Employee identifier for the account being activated.',
+    example: "user123",
+    description: "user id",
   })
   @IsString()
   @IsNotEmpty()
   employeeId: string; // The employee ID from the employee collection
 
   @ApiProperty({
-    example: 'StrongPass123',
-    description: 'Password to set for the employee account.',
+    example: "StrongPass123",
+    description: "Password to set for the account.",
     minLength: 8,
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @MinLength(8, { message: "Password must be at least 8 characters long" })
   password: string; // The password they want to set for their account
 }

@@ -4,6 +4,7 @@ allowBuilds:
   '@nestjs/core': true
   '@parcel/watcher': false
   '@scarf/scarf': true
+  '@swc/core': false
   bcrypt: true
   protobufjs: true
   unrs-resolver: true

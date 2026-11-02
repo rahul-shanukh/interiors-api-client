@@ -1,13 +1,14 @@
-// This value object represents a user's unique identifier
-// We're keeping it simple with a string, but it's wrapped in a class
-// to enforce type safety and prevent accidentally mixing user IDs with employee IDs
+// src/modules/user/value-objects/user-id.vo.ts
+
 export class UserId {
   private constructor(private readonly value: string) {}
 
   static create(value: string): UserId {
-    if (!value || value.trim().length === 0) {
-      throw new Error('User ID cannot be empty');
+    if (!value || !value.trim()) {
+      throw new Error("User ID cannot be empty");
     }
+
+    // Preserve the Firebase UID exactly as Firebase supplied it.
     return new UserId(value);
   }
 

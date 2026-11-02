@@ -1,9 +1,9 @@
 // This declaration file extends Express's Request type to tell TypeScript
 // what structure your session data has. Without this, TypeScript won't know
 // what properties are available on req.session.user
-import 'express-session';
+import "express-session";
 
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     user?: {
       userId: string; // The user's unique ID from the user collection
@@ -13,3 +13,13 @@ declare module 'express-session' {
     };
   }
 }
+
+declare global {
+  namespace Express {
+    interface Request {
+      session: Session & Partial<SessionData>;
+    }
+  }
+}
+
+export {};

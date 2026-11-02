@@ -8,6 +8,8 @@ import { NotificationContext } from "../../core/types/notification-context.types
 import {
   MAX_EMAILS_PER_USER_PER_HOUR,
   MAX_MARKETING_EMAILS_PER_USER_PER_DAY,
+  EMAIL_RATE_LIMIT_WINDOW_SECONDS,
+  MARKETING_RATE_LIMIT_WINDOW_SECONDS,
 } from "../../constants/notification.constants";
 import { CacheService } from "src/infrastructure/cache/cache.service";
 
@@ -23,15 +25,15 @@ export class RateLimiterStage implements INotificationStage {
   ): Promise<void> {
     try {
       // 1. Determine Limits dynamically from your Constants
-      let limit = 20; // Default fallback limit
-      let windowSeconds = 3600; // Default 1 hour
+      let limit = MAX_EMAILS_PER_USER_PER_HOUR; // Default fallback limit
+      let windowSeconds = EMAIL_RATE_LIMIT_WINDOW_SECONDS; // Default 1 hour
 
       if (context.category?.toLowerCase() === "marketing") {
         limit = MAX_MARKETING_EMAILS_PER_USER_PER_DAY;
-        windowSeconds = 86400; // 24 hours
+        windowSeconds = MARKETING_RATE_LIMIT_WINDOW_SECONDS; // 24 hours
       } else if (context.type?.toLowerCase() === "email") {
         limit = MAX_EMAILS_PER_USER_PER_HOUR;
-        windowSeconds = 3600; // 1 hour
+        windowSeconds = EMAIL_RATE_LIMIT_WINDOW_SECONDS; // 1 hour
       }
 
       const category = context.category || "default";
@@ -41,8 +43,9 @@ export class RateLimiterStage implements INotificationStage {
       // 2. Try Email (For Anonymous Clients - lowercased to prevent bypassing limits)
       // 3. Try Phone (For Anonymous Clients requesting SMS quotes)
       const identifier =
+        context.recipient.customerKey ||
         context.recipient.userId ||
-        context.recipient.email?.toLowerCase() ||
+        context.recipient.email?.trim().toLowerCase() ||
         context.recipient.phone;
 
       if (!identifier) {
@@ -54,19 +57,23 @@ export class RateLimiterStage implements INotificationStage {
 
       const cacheKey = `notify:limit:${category}:${identifier}`;
 
-      // We use Cache Pipeline to execute INCR and EXPIRE atomically
-      const count = await this.cacheService.increment(cacheKey, windowSeconds);
+      // Use rolling-window rate limiting to prevent fixed-window boundary bursts
+
+      const allowed = await this.cacheService.slidingWindowRateLimit(
+        cacheKey,
+        limit,
+        windowSeconds,
+      );
 
       // 3. THE BOUNCER
       // 👉 Using your dynamic limit here!
-      if (count > limit) {
+      if (!allowed) {
         this.logger.warn({
           event: "notification_rate_limited",
           notificationId: context.notificationId,
           identifier,
           category,
-          count,
-          limit, // Updated to use the dynamic limit
+          limit,
         });
 
         // KILL SWITCH: Silently drop the notification.
@@ -77,7 +84,7 @@ export class RateLimiterStage implements INotificationStage {
       }
 
       this.logger.debug(
-        `Rate limit check passed. [Category: ${category}, Count: ${count}/${limit}]`,
+        `Rate limit check passed. [Category: ${category}, Allowed: ${allowed}, Limit: ${limit}, Window: ${windowSeconds}s, Identifier: ${identifier}]`,
       );
 
       await next();

@@ -75,14 +75,14 @@ export class DeduplicationStage implements INotificationStage {
        *
        * Worker A and Worker B cannot both proceed simultaneously.
        */
-      const lockResult = await this.cacheService.set(
+      const wasProcessingLockAcquired = await this.cacheService.set(
         processingKey,
         "processing",
         this.PROCESSING_LOCK_SECONDS,
         true,
       );
 
-      if (lockResult) {
+      if (!wasProcessingLockAcquired) {
         this.logger.warn({
           event: "notification_already_processing",
           notificationId: context.notificationId,

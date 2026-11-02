@@ -5,7 +5,7 @@ import type {
   NotificationPriority,
   NotificationCategory,
   NotificationStatus,
-} from './notification.types';
+} from "./notification.types";
 
 export interface NotificationRecipient {
   email?: string;
@@ -13,6 +13,7 @@ export interface NotificationRecipient {
   deviceToken?: string;
   name: string;
   userId: string;
+  customerKey: string;
 }
 
 export interface NotificationContext {
