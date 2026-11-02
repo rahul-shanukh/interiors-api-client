@@ -1,15 +1,15 @@
 // src/infrastructure/notifications/persistence/mongo/notification-log.schema.ts
 
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 import type {
   NotificationStatus,
   NotificationProvider,
-} from '../../core/types/notification.types';
+} from "../../core/types/notification.types";
 
-@Schema({ timestamps: true, collection: 'notification_logs' })
+@Schema({ timestamps: true, collection: "notification_logs" })
 export class NotificationLog extends Document {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true, index: true, unique: true })
   notificationId!: string; // 👈 Notice the !
 
   @Prop({ index: true })
@@ -30,10 +30,10 @@ export class NotificationLog extends Document {
   @Prop()
   templateName!: string;
 
-  @Prop({ required: true, default: 'PENDING' })
+  @Prop({ required: true, default: "PENDING", type: String })
   status!: NotificationStatus;
 
-  @Prop()
+  @Prop({ type: String })
   provider!: NotificationProvider;
 
   @Prop({ type: Object })

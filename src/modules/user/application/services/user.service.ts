@@ -1,70 +1,87 @@
 // src/modules/user/application/services/user.service.ts
 
-import { Inject, Injectable } from '@nestjs/common';
-import type { UserRepository } from '../../domain/repositories/user.repository';
-import { User } from '../../domain/entities/user.entity';
-import type { IEmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository.interface';
-import { EMPLOYEE_REPOSITORY } from 'src/modules/employee/domain/repositories/employee.repository.interface';
-import { EmployeeId } from 'src/modules/employee/domain/value-objects/employee-id.vo';
-import { DomainException } from 'src/common/exceptions/domain.exception';
-import { UserErrorCode } from 'src/common/constants/error-codes.generated';
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import type { UserRepository } from "../../domain/repositories/user.repository";
+import { User } from "../../domain/entities/user.entity";
+import { DomainException } from "src/common/exceptions/domain.exception";
+import { UserErrorCode } from "src/common/constants/error-codes.generated";
+
+type RegisterUserInput = {
+  firebaseUid: string;
+  username: string;
+  email?: string;
+  emailVerified: boolean;
+  phone?: string;
+  phoneVerified: boolean;
+  whatsappUpdates: boolean;
+};
 
 @Injectable()
 export class UserService {
   constructor(
-    @Inject('UserRepository')
+    @Inject("UserRepository")
     private readonly userRepository: UserRepository,
-
-    @Inject(EMPLOYEE_REPOSITORY)
-    private readonly employeeRepository: IEmployeeRepository,
   ) {}
 
-  async activateUser(props: {
-    employeeId: string;
-    password: string;
-  }): Promise<User> {
-    const empIdVo = EmployeeId.create(props.employeeId);
-    const employee = await this.employeeRepository.findById(empIdVo);
-
-    if (!employee) {
-      // ✅ DomainException — business rule violation
-      throw new DomainException(
-        'Employee ID not found. Please contact HR.',
-        UserErrorCode.NOT_FOUND,
-      );
-    }
-
-    const existingUser = await this.userRepository.findByEmployeeId(
-      props.employeeId,
+  async createProfile(input: RegisterUserInput): Promise<User> {
+    const existingUser = await this.userRepository.findByUserId(
+      input.firebaseUid,
     );
 
     if (existingUser) {
-      // ✅ DomainException — business rule violation
       throw new DomainException(
-        'This employee has already activated their account.',
+        "This account is already registered.",
         UserErrorCode.ACCOUNT_ALREADY_EXISTS,
       );
     }
 
-    const user = await User.create({
-      plainPassword: props.password,
-      employeeId: props.employeeId,
+    const username = input.username.trim();
+    const userWithUsername = await this.userRepository.findByUsername(username);
+
+    if (userWithUsername) {
+      throw new DomainException(
+        "This username is already taken.",
+        UserErrorCode.USERNAME_TAKEN,
+      );
+    }
+
+    const user = User.create({
+      firebaseUid: input.firebaseUid,
+      username,
+      email: input.email,
+      emailVerified: input.emailVerified,
+      phone: input.phone,
+      phoneVerified: input.phoneVerified,
+      whatsappUpdates: input.whatsappUpdates,
     });
 
-    return await this.userRepository.save(user);
+    try {
+      return await this.userRepository.create(user);
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === 11000
+      ) {
+        throw new ConflictException(
+          "This username or verified contact is already in use.",
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async findByUserId(userId: string): Promise<User | null> {
+    return this.userRepository.findByUserId(userId);
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    return await this.userRepository.findByUsername(username);
+    return this.userRepository.findByUsername(username);
   }
 
   async updateLastLogin(user: User): Promise<void> {
     await this.userRepository.updateLastLogin(user.id.getValue(), new Date());
-  }
-
-  // ✅ AuthService delegates here — no direct repo access in AuthService
-  async getEmployeeForUser(employeeId: string) {
-    const empIdVo = EmployeeId.create(employeeId);
-    return await this.employeeRepository.findById(empIdVo);
   }
 }

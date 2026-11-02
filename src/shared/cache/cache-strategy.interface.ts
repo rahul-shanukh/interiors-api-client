@@ -10,4 +10,17 @@ export interface ICacheStrategy {
   clear(pattern?: string): Promise<void>;
 
   increment(key: string, ttl?: number): Promise<number>;
+
+  slidingWindowRateLimit(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<boolean>;
+
+  tokenBucketRateLimit(
+    key: string,
+    refillRate: number,
+    intervalSeconds: number,
+    maxTokens: number,
+  ): Promise<boolean>;
 }

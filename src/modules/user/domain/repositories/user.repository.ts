@@ -1,12 +1,12 @@
-import { User } from '../entities/user.entity';
+// src/modules/user/domain/repositories/user.repository.ts
 
-// Repository interface defines the contract for user data access
-// The actual implementation will be in the infrastructure layer with MongoDB
+import type { User } from "../entities/user.entity";
+
 export interface UserRepository {
-  save(user: User): Promise<User>;
+  create(user: User): Promise<User>;
+  update(user: User): Promise<User>;
+  findByUserId(userId: string): Promise<User | null>;
   findByUsername(username: string): Promise<User | null>;
-  findByEmployeeId(employeeId: string): Promise<User | null>;
-  existsByEmployeeId(employeeId: string): Promise<boolean>;
-  deleteByUserId(employeeId: string): Promise<boolean>;
-  updateLastLogin(userId: string, lastLogin: Date): Promise<void>;
+  updateLastLogin(userId: string, lastLoginAt: Date): Promise<void>;
+  deleteByUserId(userId: string): Promise<boolean>;
 }

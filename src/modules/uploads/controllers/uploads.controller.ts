@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { UploadsService } from "../application/services/uploads.service";
 import { GenerateUrlDto } from "../application/dto/generate-url.dto";
@@ -50,7 +51,13 @@ export class UploadsController {
     description: "Current session user does not have the ADMIN role.",
   })
   async getPresignedUrl(@Body() dto: GenerateUrlDto, @Req() req: Request) {
-    const { userId, name } = req.session.user!;
+    const sessionUser = (req as any).session?.user;
+
+    if (!sessionUser) {
+      throw new UnauthorizedException("Authentication required");
+    }
+
+    const { userId, name } = sessionUser;
 
     return this.uploadsService.generateUploadUrl(dto.files, dto.provider, {
       adminId: userId,

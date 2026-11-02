@@ -33,6 +33,7 @@ import { TemplateCompilerStage } from "./pipeline/stages/template-compiler.stage
 import { TrackerStage } from "./pipeline/stages/tracker.stage";
 import { TransportStage } from "./pipeline/stages/transport.stage";
 import { CacheModule } from "../cache/cache.module";
+import { Quote, QuoteSchema } from "src/modules/quotes/infrastructure/persistence/mongo/quote.schema";
 
 // import Redis from "ioredis";
 
@@ -46,6 +47,7 @@ import { CacheModule } from "../cache/cache.module";
     CacheModule,
     MongooseModule.forFeature([
       { name: NotificationLog.name, schema: NotificationLogSchema },
+      { name: Quote.name, schema: QuoteSchema },
     ]),
   ],
   controllers: [NotificationWebhookController],

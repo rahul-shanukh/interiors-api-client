@@ -1,39 +1,70 @@
 // backend\src\modules\quotes\infrastructure\persistence\mongo\quote.schema.ts
 
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import mongoose, { Document } from "mongoose";
 
-@Schema({ _id: false })
-class RoomCounts {
-  @Prop({ required: true, default: 0 }) living!: number;
-  @Prop({ required: true, default: 0 }) kitchen!: number;
-  @Prop({ required: true, default: 0 }) bedroom!: number;
-  @Prop({ required: true, default: 0 }) bathroom!: number;
-  @Prop({ required: true, default: 0 }) dining!: number;
-}
-
-@Schema({ timestamps: true })
+@Schema({
+  timestamps: true,
+  collection: "quotes",
+  discriminatorKey: "calculatorType",
+})
 export class Quote extends Document {
-  @Prop({ required: true })
-  bhkType!: string;
+  // --- Calculator Type & Fingerprint ---
 
-  @Prop({ type: RoomCounts, required: true })
-  rooms!: RoomCounts;
+  calculatorType!: string; // "FULL_HOME", "KITCHEN", "WARDROBE"
 
-  @Prop({ required: true })
-  package!: string;
+  // --- Customer Contact Info ---
+  @Prop({ required: true, index: true, immutable: true })
+  customerKey!: string;
 
-  @Prop({ required: true })
-  name!: string;
+  // In Quote.schema.ts
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Customer",
+    required: true,
+    index: true,
+  })
+  customer!: mongoose.Types.ObjectId;
 
-  @Prop({ required: true })
-  phone!: string;
+  @Prop({
+    type: {
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+    required: true,
+  })
+  location?: {
+    city?: string;
+    state?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 
-  @Prop({ required: true })
-  email!: string;
-
+  // --- Financial Estimate ---
   @Prop({ required: true })
   estimatedPrice!: number;
+
+  @Prop({ type: Object, required: true })
+  pricingSnapshot!: Record<string, unknown>;
+
+  // --- Quote Details ---
+
+  @Prop({ type: Object, required: true, default: {} })
+  quotesRequested!: Record<string, unknown>;
+
+  // --- PDF & Communication Tracking ---
+  @Prop()
+  pdfUrl?: string;
+
+  @Prop({ default: false })
+  isEmailSent!: boolean;
+
+  @Prop({ default: false })
+  isWhatsappSent!: boolean;
 
   // Lead lifecycle
   @Prop({ default: "NEW_LEAD", index: true })

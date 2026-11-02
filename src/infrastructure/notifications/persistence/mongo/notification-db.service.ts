@@ -1,10 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import mongoose from "mongoose";
 import { INotificationTracker } from "../../core/interfaces/notification-tracker.interface";
 import { NotificationContext } from "../../core/types/notification-context.types";
 import { NotificationResult } from "../../core/interfaces/notification.interface";
 import { NotificationLog } from "./notification-log.schema";
+import { Quote, QuoteSchema } from "src/modules/quotes/infrastructure/persistence/mongo/quote.schema";
 
 @Injectable()
 export class NotificationDbService implements INotificationTracker {
@@ -13,6 +15,8 @@ export class NotificationDbService implements INotificationTracker {
   constructor(
     @InjectModel(NotificationLog.name)
     private readonly logModel: Model<NotificationLog>,
+    @InjectModel(Quote.name)
+    private readonly quoteModel: Model<Quote>,
   ) {}
 
   async recordAttempt(context: NotificationContext): Promise<void> {
@@ -36,6 +40,16 @@ export class NotificationDbService implements INotificationTracker {
     }
   }
 
+  // Cloud Tasks retries are at-least-once: a task that already sent the email
+  // must be acknowledged (200) without sending it again.
+  async isAlreadyDelivered(context: NotificationContext): Promise<boolean> {
+    const existing = await this.logModel
+      .findOne({ notificationId: context.notificationId, status: "delivered" })
+      .lean()
+      .exec();
+    return !!existing;
+  }
+
   async recordResult(
     context: NotificationContext,
     result: NotificationResult,
@@ -52,6 +66,17 @@ export class NotificationDbService implements INotificationTracker {
           },
         },
       );
+
+      if (
+        context.type.toLowerCase() === "email" &&
+        result.status === "delivered" &&
+        mongoose.isValidObjectId(context.notificationId)
+      ) {
+        await this.quoteModel.updateOne(
+          { _id: context.notificationId },
+          { $set: { isEmailSent: true } },
+        );
+      }
     } catch (error: unknown) {
       this.logger.error(
         `Failed to update result for ${context.notificationId}: ${

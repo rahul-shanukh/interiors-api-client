@@ -1,11 +1,8 @@
-import { Module } from '@nestjs/common';
-import { MediaService } from './media.service';
-import { MediaResolver } from './media.resolver';
+import { Module } from "@nestjs/common";
+import { MediaService } from "./media.service";
 
 @Module({
-  // Providers are the classes NestJS will instantiate
-  providers: [MediaService, MediaResolver],
-  // Exporting MediaService allows other modules (like Catalog) to use it later
+  providers: [MediaService],
   exports: [MediaService],
 })
 export class MediaModule {}

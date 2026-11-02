@@ -1,12 +1,19 @@
 // src/health/health.controller.ts
-import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import {
   HealthCheck,
   HealthCheckService,
   MongooseHealthIndicator,
 } from "@nestjs/terminus";
 import { ReadinessService } from "./readiness.service";
-import { Public } from "src/common/decorators/roles.decorator";
+import { Public } from "../common/decorators/roles.decorator";
+import { CircuitBreakerFactory } from "src/infrastructure/resilience/circuit-breaker.factory";
 
 @Public()
 @Controller("health")
@@ -15,6 +22,7 @@ export class HealthController {
     private readonly health: HealthCheckService,
     private readonly mongoose: MongooseHealthIndicator,
     private readonly readiness: ReadinessService,
+    private readonly circuitBreakerFactory: CircuitBreakerFactory,
   ) {}
 
   // ✅ LIVENESS — container/process alive
@@ -44,5 +52,34 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([() => this.mongoose.pingCheck("mongodb")]);
+  }
+
+  @Get("circuit-breakers/:name")
+  getCircuitBreakerHealth(@Param("name") name: string) {
+    const breaker = this.circuitBreakerFactory.findBreaker(name);
+
+    if (!breaker) {
+      throw new NotFoundException(
+        `Circuit breaker '${name}' is not registered`,
+      );
+    }
+
+    return {
+      name,
+      circuitState: breaker.opened
+        ? "OPEN"
+        : breaker.halfOpen
+          ? "HALF_OPEN"
+          : "CLOSED",
+      healthy: !breaker.opened,
+      stats: (breaker.stats as any).toJSON(),
+    };
+  }
+
+  @Get("circuit-breakers")
+  getCircuitBreakers() {
+    return {
+      circuitBreakers: this.circuitBreakerFactory.getAllStats(),
+    };
   }
 }

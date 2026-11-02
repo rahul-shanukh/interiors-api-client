@@ -1,33 +1,98 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+// src/modules/user/infrastructure/persistence/mongo/user.schema.ts
 
-// MongoDB schema for storing user documents
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import type { HydratedDocument } from "mongoose";
+import { UserStatus } from "../../../domain/entities/user.entity";
+
 @Schema({ timestamps: true })
-export class UserDocument extends Document {
-  @Prop({ required: true, unique: true })
-  userId: string;
+export class UserDocument {
+  @Prop({
+    type: String,
+    required: true,
+    unique: true,
+    immutable: true,
+    trim: true,
+  })
+  userId!: string; // Firebase UID
 
-  @Prop({ required: true, unique: true })
-  username: string; // 'unique: true' automatically creates an index here
+  @Prop({
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+  })
+  username!: string;
 
-  @Prop({ required: true })
-  password: string;
+  @Prop({
+    type: String,
+    trim: true,
+    lowercase: true,
+  })
+  email?: string;
 
-  @Prop({ required: true, unique: true })
-  employeeId: string; // 'unique: true' automatically creates an index here
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  emailVerified!: boolean;
 
-  @Prop({ required: true, enum: ['PENDING', 'ACTIVE', 'SUSPENDED', 'LOCKED'] })
-  status: string;
+  @Prop({
+    type: String,
+    trim: true,
+  })
+  phone?: string;
 
-  @Prop()
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  phoneVerified!: boolean;
+
+  @Prop({
+    type: Boolean,
+    required: true,
+    default: false,
+  })
+  whatsappUpdates!: boolean;
+
+  @Prop({
+    type: String,
+    required: true,
+    enum: Object.values(UserStatus),
+  })
+  status!: UserStatus;
+
+  @Prop({ type: Date })
   lastLoginAt?: Date;
 
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt!: Date;
+  updatedAt!: Date;
 }
+
+export type UserHydratedDocument = HydratedDocument<UserDocument>;
 
 export const UserSchema = SchemaFactory.createForClass(UserDocument);
 
-// REMOVED: UserSchema.index({ username: 1 });
-// REMOVED: UserSchema.index({ employeeId: 1 });
-// These are redundant because of the 'unique: true' property above.
+UserSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      emailVerified: true,
+      email: { $type: "string" },
+    },
+  },
+);
+
+UserSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      phoneVerified: true,
+      phone: { $type: "string" },
+    },
+  },
+);
